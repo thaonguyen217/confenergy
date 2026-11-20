@@ -1,5 +1,5 @@
 temp/
 tables/
-data/
+data
 __pycache__/
 *.pyc
