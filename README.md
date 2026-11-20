@@ -1,6 +1,6 @@
 # confenergy
 
-Tools to compute energies of 3D molecular structures (conformers) with GFN2-xTB and ORCA, plus benchmarks comparing QM9 and RDKit structures.
+Tools to compute energies of 3D molecular structures (conformers) with GFN2-xTB and ORCA.
 
 | Method | Command | Cost per QM9-sized molecule |
 |---|---|---|
@@ -24,35 +24,11 @@ python energy/xtb_energy.py examples/gdb_52425_qm9.sdf examples/gdb_52425_etkdg_
 python energy/orca_energy.py examples/gdb_52425_qm9.sdf examples/gdb_52425_etkdg_mmff.sdf --method r2scan3c --nprocs 16
 ```
 
-## Benchmarks on QM9
-
-Scripts that compare QM9's DFT structures with RDKit ETKDG + MMFF structures of the same molecules.
-They need RDKit and NumPy, and the QM9 files:
-
-```bash
-./download_qm9.sh     # gdb9.sdf, gdb9.sdf.csv, uncharacterized.txt -> data/qm9/ (or $QM9_DIR), ~90 MB
-```
-
-| Script | What it does |
-|---|---|
-| `eval_singlepoint.py` | Samples random QM9 molecules, builds an RDKit conformer for each, and scores both structures as given with MMFF94, GFN2-xTB, r2SCAN-3c, B3LYP (QM9 level), B3LYP-D3 and DLPNO-CCSD(T). Reports E(RDKit) − E(QM9) per method and each method's error vs DLPNO. |
-| `eval_relaxation.py` | Optimizes the structures from an `eval_singlepoint.py` run with xTB and r2SCAN-3c, and reports how much energy each releases and how far its atoms move (how far it was from a minimum). |
-| `compare_conformer.py` | One molecule: aligns the QM9 and RDKit structures, reports RMSD, and writes an interactive 3D overlay (`temp/out/<id>_overlay.html`). |
-
-```bash
-python eval_singlepoint.py --n 10 --seed 0 --parallel 6 --nprocs 16 --tag 10mol
-python eval_singlepoint.py --combine tables/singlepoint_10mol.csv tables/singlepoint_20mol.csv --tag 30mol
-python eval_relaxation.py tables/singlepoint_10mol.csv --tag 10mol [--structures qm9 rdkit]
-python compare_conformer.py gdb_29185
-```
-
-Tables go to `tables/`, structures and run folders to `temp/`. DLPNO-CCSD(T) dominates the cost of `eval_singlepoint.py`: about 30 min per molecule on 16 cores (two structures).
-
 ## Requirements
 
 - [ORCA](https://www.faccts.de/orca/) 6.1 with OpenMPI 4.1.x (see below).
 - [xTB](https://github.com/grimme-lab/xtb) 6.7 (see below).
-- Python 3. The energy tools use only the standard library; the benchmark scripts also need RDKit and NumPy (`conda install -c conda-forge rdkit numpy`).
+- Python 3 standard library only.
 
 ## Installing ORCA
 
