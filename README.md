@@ -26,6 +26,39 @@ python energy/orca_energy.py examples/gdb_52425_qm9.sdf examples/gdb_52425_etkdg
 
 ## Requirements
 
-- [ORCA](https://www.faccts.de/orca/) 6.1 with OpenMPI 4.1.x. Set `ORCA_HOME` (ORCA folder) and `MPI_HOME` (folder containing `bin/mpirun`).
-- [xTB](https://github.com/grimme-lab/xtb) 6.7, e.g. `conda install -c conda-forge xtb`. Set `XTB_BIN` to the `xtb` executable.
+- [ORCA](https://www.faccts.de/orca/) 6.1 with OpenMPI 4.1.x (see below).
+- [xTB](https://github.com/grimme-lab/xtb) 6.7 (see below).
 - Python 3 standard library only.
+
+## Installing ORCA
+
+ORCA is free for academic use but cannot be redistributed, so each user downloads it after registering.
+
+1. Register at the [ORCA Forum](https://orcaforum.kofo.mpg.de) and accept the academic license (approval can take a day).
+2. In the forum's **Downloads** section, get the Linux x86-64 build of ORCA 6.1 (the archive linked against OpenMPI 4.1) and unpack it:
+   ```bash
+   tar -xf orca_6_1_*_linux_x86-64*.tar.xz -C ~/software    # adjust to the downloaded file name
+   ```
+3. ORCA's parallel runs need OpenMPI 4.1 (not 5.x). With conda:
+   ```bash
+   conda create -n orca_mpi -c conda-forge openmpi=4.1
+   ```
+4. Point the scripts at both:
+   ```bash
+   export ORCA_HOME=~/software/<unpacked ORCA folder>     # folder containing bin/orca
+   export MPI_HOME=$(conda info --base)/envs/orca_mpi    # folder containing bin/mpirun
+   ```
+   `orca_energy.py` adds both to `PATH` and `LD_LIBRARY_PATH` and calls ORCA by its full path, as ORCA requires for parallel runs.
+5. Check it:
+   ```bash
+   python energy/orca_energy.py examples/gdb_52425_qm9.sdf --method r2scan3c --nprocs 4
+   ```
+
+Use `--nprocs` up to the number of free cores, with about 2 GB of memory per process (`--maxcore`, in MB, default 2000).
+
+## Installing xTB
+
+```bash
+conda create -n xtb -c conda-forge xtb=6.7
+export XTB_BIN=$(conda info --base)/envs/xtb/bin/xtb
+```
