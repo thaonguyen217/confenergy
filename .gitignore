@@ -1,3 +1,5 @@
 temp/
+tables/
+data/
 __pycache__/
 *.pyc

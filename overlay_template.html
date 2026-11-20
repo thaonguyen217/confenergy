@@ -1,0 +1,178 @@
+<title>__MOL_ID__ Conformer Overlay</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: lab-notebook header strip, then viewer beside a narrow readout column; stacks on phones */
+  :root {
+    --bg: #f5f7f8;
+    --panel: #ffffff;
+    --fg: #17212b;
+    --muted: #5b6875;
+    --rule: #d8dee4;
+    --ref: #2f6fb3;      /* QM9 DFT conformer */
+    --gen: #d9822b;      /* ETKDG + MMFF conformer */
+    --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11161b; --panel: #182028; --fg: #e3e9ef; --muted: #93a1ae; --rule: #2a3540;
+      --ref: #6aa8ec; --gen: #f0a35a; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #11161b; --panel: #182028; --fg: #e3e9ef; --muted: #93a1ae; --rule: #2a3540;
+    --ref: #6aa8ec; --gen: #f0a35a; color-scheme: dark;
+  }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 15px; line-height: 1.5;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px 32px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
+  header { display: grid; gap: 4px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 0; font-size: 24px; font-weight: 600; text-wrap: balance; }
+  .smiles { font-family: var(--font-mono); font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+  .main { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+  .viewer {
+    position: relative; width: 100%; aspect-ratio: 4 / 3; max-width: 100%;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden;
+  }
+  .hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); pointer-events: none; }
+  aside { display: grid; gap: 18px; min-width: 0; }
+  .block { display: grid; gap: 8px; }
+  .block h2 { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .metric { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--rule); padding-block: 6px; }
+  .metric span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 16px; }
+  .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .toggle input { width: 16px; height: 16px; accent-color: var(--fg); }
+  .swatch { width: 22px; height: 6px; border-radius: 3px; flex: none; }
+  .swatch.ref { background: var(--ref); }
+  .swatch.gen { background: var(--gen); }
+  .seg { display: flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .seg button {
+    flex: 1; font: inherit; font-size: 13px; padding: 6px 8px; background: transparent; color: var(--fg);
+    border: 0; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--rule); }
+  .seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+  button:focus-visible, .toggle input:focus-visible { outline: 2px solid var(--ref); outline-offset: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--rule); }
+  th { font-weight: 500; color: var(--muted); }
+  td.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .bar { height: 6px; background: var(--gen); border-radius: 3px; min-width: 1px; }
+  .note { font-size: 13px; color: var(--muted); max-width: 65ch; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="molid"></div>
+    <h1>DFT geometry vs. ETKDG + MMFF conformer</h1>
+    <div class="smiles" id="smiles"></div>
+  </header>
+
+  <div class="main">
+    <div class="viewer" id="viewer"><div class="hint">Drag to rotate · scroll or pinch to zoom</div></div>
+
+    <aside>
+      <div class="block">
+        <h2>Conformers</h2>
+        <label class="toggle"><input type="checkbox" id="show-ref" checked><span class="swatch ref"></span>QM9 (B3LYP/6-31G(2df,p))</label>
+        <label class="toggle"><input type="checkbox" id="show-gen" checked><span class="swatch gen"></span>RDKit ETKDGv3 + MMFF94</label>
+      </div>
+
+      <div class="block">
+        <h2>Aligned RMSD</h2>
+        <div class="metric"><span>Heavy atoms</span><span id="rmsd-heavy"></span></div>
+        <div class="metric"><span>All atoms (incl. H)</span><span id="rmsd-all"></span></div>
+      </div>
+
+      <div class="block">
+        <h2>Style</h2>
+        <div class="seg" role="group" aria-label="Rendering style">
+          <button type="button" id="style-stick" aria-pressed="true">Stick</button>
+          <button type="button" id="style-ball" aria-pressed="false">Ball &amp; stick</button>
+        </div>
+        <div class="seg" role="group" aria-label="Coloring">
+          <button type="button" id="color-conf" aria-pressed="true">By conformer</button>
+          <button type="button" id="color-elem" aria-pressed="false">By element</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="block">
+    <h2>Per-atom displacement after alignment</h2>
+    <div style="overflow-x:auto"><table id="disp"><thead><tr><th>#</th><th>Atom</th><th class="num">Δ (Å)</th><th style="width:45%"></th></tr></thead><tbody></tbody></table></div>
+    <p class="note">The ETKDG + MMFF conformer was embedded from the SMILES alone (seed 42), then aligned onto the QM9 geometry with symmetry-aware best-fit RMSD. Rows are listed in QM9 atom order.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/3dmol@2.4.0/build/3Dmol-min.js"></script>
+<script>
+const DATA = /*DATA*/null;
+
+document.getElementById("molid").textContent = DATA.mol_id;
+document.getElementById("smiles").textContent = DATA.smiles;
+document.getElementById("rmsd-heavy").textContent = DATA.rmsd_heavy.toFixed(3) + " Å";
+document.getElementById("rmsd-all").textContent = DATA.rmsd_all.toFixed(3) + " Å";
+
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const viewer = $3Dmol.createViewer(document.getElementById("viewer"), { backgroundColor: css("--panel") });
+const refModel = viewer.addModel(DATA.qm9_molblock, "sdf", { keepH: true });
+const genModel = viewer.addModel(DATA.gen_molblock, "sdf", { keepH: true });
+
+const state = { ball: false, byElem: false };
+
+function styleFor(colorVar, carbonScheme) {
+  const color = state.byElem ? { colorscheme: carbonScheme } : { color: css(colorVar) };
+  const s = { stick: { radius: state.ball ? 0.12 : 0.16, ...color } };
+  if (state.ball) s.sphere = { scale: 0.25, ...color };
+  return s;
+}
+
+function render() {
+  viewer.setBackgroundColor(css("--panel"));
+  refModel.setStyle({}, styleFor("--ref", "cyanCarbon"));
+  genModel.setStyle({}, styleFor("--gen", "orangeCarbon"));
+  refModel.hide(); genModel.hide();
+  if (document.getElementById("show-ref").checked) refModel.show();
+  if (document.getElementById("show-gen").checked) genModel.show();
+  viewer.render();
+}
+
+function seg(onId, offId, key, value) {
+  document.getElementById(onId).addEventListener("click", () => {
+    state[key] = value;
+    document.getElementById(onId).setAttribute("aria-pressed", "true");
+    document.getElementById(offId).setAttribute("aria-pressed", "false");
+    render();
+  });
+}
+seg("style-stick", "style-ball", "ball", false);
+seg("style-ball", "style-stick", "ball", true);
+seg("color-conf", "color-elem", "byElem", false);
+seg("color-elem", "color-conf", "byElem", true);
+document.getElementById("show-ref").addEventListener("change", render);
+document.getElementById("show-gen").addEventListener("change", render);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+const tbody = document.querySelector("#disp tbody");
+const maxD = Math.max(...DATA.displacements.map(d => d.d), 1e-6);
+DATA.displacements.forEach((d, i) => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${i + 1}</td><td>${d.elem}</td><td class="num">${d.d.toFixed(3)}</td>` +
+    `<td><div class="bar" style="width:${(100 * d.d / maxD).toFixed(1)}%"></div></td>`;
+  tbody.appendChild(tr);
+});
+
+render();
+viewer.zoomTo();
+viewer.render();
+window.addEventListener("resize", () => viewer.resize());
+</script>
